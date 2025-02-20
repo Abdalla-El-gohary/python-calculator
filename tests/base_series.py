@@ -12,7 +12,6 @@ class BaseSeries(ABC):
 
 class SinSeries(BaseSeries): 
     def calculate(self, input):  # input is in radians
-        input = input
         if input > 2 * math.pi:
             input = input % (2 * math.pi)
         output = 0
@@ -28,7 +27,6 @@ class SinSeries(BaseSeries):
 
 class CosSeries(BaseSeries):
     def calculate(self, input):  # input is in radians
-        input = input
         if input > 2 * math.pi:
             input = input % (2 * math.pi)
         output = 0
@@ -40,3 +38,18 @@ class CosSeries(BaseSeries):
             output += term
             n += 1
         return output
+    
+
+class ExpSeries(BaseSeries):
+    def calculate(self, input): # input is a real number (power of e)
+        output = 0
+        n = 0
+        while True:
+            term = input**n / math.factorial(n)
+            if abs(term) < self.precision:
+                break
+            output += term
+            n += 1
+        return output
+    
+
