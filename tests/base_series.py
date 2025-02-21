@@ -1,6 +1,9 @@
 from abc import ABC, abstractmethod
 import math
 
+# from mpmath import bernoulli as B  # Used for tanh series
+from sympy import bernoulli as B
+
 class BaseSeries(ABC):
     def __init__(self, precision=1e-6):
         self.precision = precision
@@ -38,7 +41,64 @@ class CosSeries(BaseSeries):
             output += term
             n += 1
         return output
+
+class TanSeries(BaseSeries):
+    def calculate(self, x):  # x is in radians
+        self.precision = 1e-7
+        if abs(x) > math.pi / 2:
+            x = x % (math.pi)
+        elif x == math.pi / 2:
+            raise ValueError("tan(pi/2) is undefined.")
+        output = 0
+        n = 1
+        while True:
+            term = B(2*n) * (-1)**(n-1) * 2**(2*n) * (2**(2*n) - 1) * x**((2*n) - 1) / math.factorial(2*n)
+            if abs(term) < self.precision:
+                break
+            output += term
+            n += 1
+        return output
+
+
+class SinhSeries(BaseSeries):
+    def calculate(self, x):  # x is a real number
+        output = 0
+        n = 0
+        while True:
+            term = x**(2*n + 1) / math.factorial(2*n + 1)
+            if abs(term) < self.precision:
+                break
+            output += term
+            n += 1
+        return output
     
+class CoshSeries(BaseSeries):
+    def calculate(self, x):  # x is a real number
+        output = 0
+        n = 0
+        while True:
+            term = x**(2*n) / math.factorial(2*n)
+            if abs(term) < self.precision:
+                break
+            output += term
+            n += 1
+        return output
+    
+class TanhSeries(BaseSeries):
+    def calculate(self, x):  # x is a real number
+        if abs(x) >= math.pi / 2:
+            output = 1 if x > 0 else -1
+            return output
+        output = 0
+        n = 1
+        while True:
+            term = (2**(2*n) * (2**(2*n) - 1) * B(2*n) * x**(2*n - 1) )/ math.factorial(2*n)
+            if abs(term) < self.precision:
+                break
+            output += term
+            n += 1
+        return output
+
 
 class ExpSeries(BaseSeries):
     def calculate(self, x): # x is a real number (power of e)
@@ -89,7 +149,4 @@ class LnSeries(BaseSeries):  # Gregory–Leibniz series
         
         return output  
 
-
-# class Log
-    
 
