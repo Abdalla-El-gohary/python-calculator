@@ -53,7 +53,7 @@ class ExpSeries(BaseSeries):
         return output
     
 
-class LnSeries(BaseSeries):
+class LnSeriesTaylor(BaseSeries):
     def calculate(self, x): # x is a real number (positive and less than 2)
         self.precision = 1e-7
         if x <= 0 or x >= 2:
@@ -69,7 +69,25 @@ class LnSeries(BaseSeries):
             output += term
             n += 1        
         return output
-
+    
+class LnSeries(BaseSeries):  # Gregory–Leibniz series
+    def calculate(self, x):  # valid for x > 0
+        self.precision = 1e-7
+        if x <= 0:
+            raise ValueError("x must be positive.")
+        
+        y = (x - 1) / (x + 1)  # Transformation for better convergence
+        output = 0
+        n = 0
+        
+        while True:
+            term = (2 * (y ** (2 * n + 1))) / (2 * n + 1)
+            if abs(term) < self.precision:
+                break
+            output += term
+            n += 1
+        
+        return output  
 
 
 # class Log
