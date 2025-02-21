@@ -11,13 +11,13 @@ class BaseSeries(ABC):
 
 
 class SinSeries(BaseSeries): 
-    def calculate(self, input):  # input is in radians
-        if input > 2 * math.pi:
-            input = input % (2 * math.pi)
+    def calculate(self, x):  # x is in radians
+        if x > 2 * math.pi:
+            x = x % (2 * math.pi)
         output = 0
         n = 0
         while True:
-            term = (-1)**n * input**(2*n+1) / math.factorial(2*n+1)
+            term = (-1)**n * x**(2*n+1) / math.factorial(2*n+1)
             if abs(term) < self.precision:
                 break
             output += term
@@ -26,13 +26,13 @@ class SinSeries(BaseSeries):
     
 
 class CosSeries(BaseSeries):
-    def calculate(self, input):  # input is in radians
-        if input > 2 * math.pi:
-            input = input % (2 * math.pi)
+    def calculate(self, x):  # x is in radians
+        if x > 2 * math.pi:
+            x = x % (2 * math.pi)
         output = 0
         n = 0
         while True:
-            term = (-1)**n * input**(2*n) / math.factorial(2*n)
+            term = (-1)**n * x**(2*n) / math.factorial(2*n)
             if abs(term) < self.precision:
                 break
             output += term
@@ -41,15 +41,37 @@ class CosSeries(BaseSeries):
     
 
 class ExpSeries(BaseSeries):
-    def calculate(self, input): # input is a real number (power of e)
+    def calculate(self, x): # x is a real number (power of e)
         output = 0
         n = 0
         while True:
-            term = input**n / math.factorial(n)
+            term = x**n / math.factorial(n)
             if abs(term) < self.precision:
                 break
             output += term
             n += 1
         return output
+    
+
+class LnSeries(BaseSeries):
+    def calculate(self, x): # x is a real number (positive and less than 2)
+        self.precision = 1e-7
+        if x <= 0 or x >= 2:
+            raise ValueError("x must be between 0 and 2 (exclusive).")
+        
+
+        output = 0
+        n = 1
+        while True:
+            term = ((-1)**(n+1))*((x - 1)**n / n)
+            if abs(term) < self.precision:
+                break
+            output += term
+            n += 1        
+        return output
+
+
+
+# class Log
     
 
