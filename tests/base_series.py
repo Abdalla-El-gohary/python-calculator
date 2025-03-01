@@ -148,5 +148,11 @@ class LnSeries(BaseSeries):  # Gregory–Leibniz series
             n += 1
         
         return output  
+    
+class LognSeries(LnSeries):
+    def calculate(self, value, base):
+        num = super().calculate(value)
+        dem = super().calculate(base)
+        return (num / dem)
 
-
+    
