@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox, ttk
-from base_series import LnSeries, ExpSeries, SinSeries, CosSeries, TanSeries, SinhSeries, CoshSeries, TanhSeries
+from base_series import LnSeries, ExpSeries, SinSeries, CosSeries, TanSeries, SinhSeries, CoshSeries, TanhSeries, LognSeries
 import math
 import re
 
@@ -174,12 +174,16 @@ class CalculatorApp:
             elif value == "Hyp":
                 self.show_hyp_menu()
             elif value == "√":
-                self.input_text.insert(tk.INSERT, "^0.5")
+                self.input_text.insert(tk.INSERT, " ")
+                self.input_text.mark_set(tk.INSERT, "insert -1 chars") 
+                self.input_text.insert(tk.INSERT, "√")
             elif value == "x⁻¹":
                 self.input_text.insert(tk.INSERT, "^-1")
             elif value == "logₙ":
                 self.input_text.insert(tk.INSERT, "logₙ(")
                 self.input_text.mark_set(tk.INSERT, "insert -1 chars") 
+            elif value == "(-)":
+                self.input_text.insert(tk.INSERT, "-")
 
 
             # Not implemented buttons
@@ -219,35 +223,64 @@ class CalculatorApp:
             self.result_text.delete("1.0", tk.END)
 
     def calculate_result(self):
-        self.history.append(self.input_text.get("1.0", tk.END))
-        self.history_index = len(self.history) -1
-        self.history_enabled = True
         
-        if self.result_text.get("1.0", tk.END) != "\n":
-            print("www")
-            self.history_result.append(self.result_text.get("1.0", tk.END))
+        
+        input_text = self.get_input_text()
+        postfix = self.infix_to_postfix(input_text)
 
+        try:
+            result = self.evaluate_postfix(postfix)
 
+            self.history.append(self.input_text.get("1.0", tk.END))
+            self.history_result.append(result)
+            self.history_index = len(self.history) -1
+            self.history_enabled = True
+
+            self.result_text.delete("1.0", tk.END)
+            self.result_text.insert(tk.END, result)
+            
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
+
+    def get_input_text(self):  # Convert the input text to a format that can be evaluated
         input_text = self.input_text.get("1.0", tk.END)
-        input_text = input_text.replace("×", "*").replace("÷", "/")
+        input_text = input_text.replace("×", "*").replace("÷", "/").replace("--", "+")
 
         if "Ans" in input_text:
             ans = str(self.history_result[-1] if self.history_result else 0)
             input_text = input_text.replace("Ans", ans)
 
-        postfix = self.infix_to_postfix(input_text)
+        if "√" in input_text:
+            # find whitespace after √
+            index = input_text.find("√")
+            whitespace = input_text.find(" ", index)
+            if whitespace == -1:
+                print("no whitespace")
+            else:
+                # replace √ with ()^0.5
+                input_text = input_text[:index] + "(" + input_text[index+1:whitespace] + ")" + "^0.5" +   input_text[whitespace+1:]
+        
+        if "-" in input_text:
+            i = 1
+            while i < len(input_text):
+                if input_text[i] == "-" and input_text[i-1]  not in ["+", "-", "*", "/", "(", "^"] and  input_text[i+1].isnumeric():  # Check if the '-' is a negative sign
+                    input_text = input_text[:i] + "+" + input_text[i:]
+                    i += 1
+                i += 1
+        
+        match = re.search(r"log(\d+)\(", input_text)
+        if match:
+            self.base_log = match.group(1)
+            input_text = input_text.replace(f"log{self.base_log}(", "lon(")
 
-        try:
-            result = self.evaluate_postfix(postfix)
-            self.result_text.delete("1.0", tk.END)
-            self.result_text.insert(tk.END, result)
-            self.history_result.append(result)
-        except Exception as e:
-            messagebox.showerror("Error", str(e))
+        # input_text = re.sub(r"log(\d+)\((\d+)\)", r"ln(\2)/ln(\1)", input_text) # Convert logₙ(x) to ln(x)/ln(ₙ)
+        # input_text = re.sub(r"log\((\d+)\)", r"ln(\1)/ln(10)", input_text) # Convert log(x) to ln(x)/ln(10)
 
+        return input_text
 
     def infix_to_postfix(self, expression):
         precedence = {
+            'lon': 3, # log with base n
             'log': 3,
             'ln': 3,
             'sin': 3,
@@ -272,14 +305,13 @@ class CalculatorApp:
         }
         stack = []
         postfix = []
-        expression = re.sub(r"log(\d+)\((\d+)\)", r"ln(\2)/ln(\1)", expression) # Convert logₙ(x) to ln(x)/ln(ₙ)
-        expression = re.sub(r"log\((\d+)\)", r"ln(\1)/ln(10)", expression) # Convert log(x) to ln(x)/ln(10)
+        
 
-        tokens = re.findall(r"[\d.]+|[A-Za-z]+|\S", expression) # Tokenize the expression
+        tokens = re.findall(r"[\d.]+|[-\d.]+|[A-Za-z]+|\S", expression) # Tokenize the expression
         
         print(tokens)
         for token in tokens:
-            if token.isnumeric() or token.replace(".", "", 1).isnumeric():
+            if token.replace("-", "", 1).replace(".", "", 1).isnumeric():
                 postfix.append(token)
             elif  token in ['π', 'e']:  # numerical constants
                 postfix.append(self.mapping_dict[token])
@@ -306,11 +338,11 @@ class CalculatorApp:
     def evaluate_postfix(self, postfix):
         stack = []
         for token in postfix:
-            if token.isnumeric() or token.replace(".", "", 1).isnumeric():
+            if token.replace("-", "", 1).replace(".", "", 1).isnumeric():
                 stack.append(float(token))
             elif token == 'e':
                 stack.append('e')
-            elif token in ['sin', 'cos', 'tan', 'log', 'ln', 'sinh', 'cosh', 'tanh', 'asin', 'acos', 'atan', 'asinh', 'acosh', 'atanh']:
+            elif token in ['sin', 'cos', 'tan', 'log', 'ln', 'lon', 'sinh', 'cosh', 'tanh', 'asin', 'acos', 'atan', 'asinh', 'acosh', 'atanh']:
                 arg = stack.pop()
                 if token == 'sin':
                     sin_series = SinSeries()
@@ -348,11 +380,21 @@ class CalculatorApp:
                     ln_series = LnSeries()
                     stack.append(ln_series.calculate(arg))
                 
+                elif token == 'log':
+                    log_series = LognSeries()
+                    stack.append(log_series.calculate(arg, 10))
+                elif token == 'lon':
+                    print(self.base_log)
+                    logn_series = LognSeries()
+                    stack.append(logn_series.calculate(arg, float(self.base_log)))
+
+                
+
+                
             
             else:
                 b = stack.pop()
                 a = stack.pop()
-                print(a, b)
                 if token == '+':
                     stack.append(a + b)
                 elif token == '-':
