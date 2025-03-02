@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox, ttk
-from base_series import LnSeries, ExpSeries, SinSeries, CosSeries, TanSeries, SinhSeries, CoshSeries, TanhSeries, LognSeries
+from series_calculations.base_series import LnSeries, ExpSeries, SinSeries, CosSeries, TanSeries, SinhSeries, CoshSeries, TanhSeries, LognSeries
 import math
 import re
 
@@ -8,13 +8,15 @@ LIGHT_GREEN = '#d8ead8'
 BLACK = '#20272b'
 DISPLAY_FONT = ("Arial", 30)
 BUTTONS_FONT = ("Arial", 14)
+LABEL_FONT = ("Arial", 11)
 
 class CalculatorApp:
-    def __init__(self, root):
+    def __init__(self, root, postfix):
         self.root = root
         self.root.title("Advanced Calculator")
-        self.root.geometry("570x700")
+        self.root.geometry("570x800")
         self.root.resizable(False, False)
+        self.postifix = postfix
 
         self.shift_active = False
         self.equal_pressed = False
@@ -24,37 +26,44 @@ class CalculatorApp:
         self.history_result = []
         self.history_index = 0
 
-
         self.mapping_dict = {
             'π': str(math.pi),
             'e': str(math.e)
         }
-        
+
         self.buttons = [
-        ('SHIFT', 'ALPHA','↑','MODE', 'ON'),
-        ( '←', '→' , 'e^'),
-        ( 'calc','∫dx', '↓', 'x⁻¹', 'logₙ'),
-        ( '√', 'x²', '^', 'log', 'ln'), 
-        ('(-)', 'Hyp', 'sin', 'cos', 'tan'),
-        ('RCL', 'ENG', '(', ')', 'S⇔D'),
-        ('7', '8', '9', 'DEL', 'AC'),
-        ('4', '5', '6', '×', '÷'),
-        ('1', '2', '3', '+', '-'),
-        ('0', '.', '×10^x', 'Ans', '=')
+            ('SHIFT', 'ALPHA', '↑', 'MODE', 'ON'),
+            ('←', '→', 'e^'),
+            ('calc', '∫dx', '↓', 'x⁻¹', 'logₙ'),
+            ('√', 'x²', '^', 'log', 'ln'),
+            ('(-)', 'Hyp', 'sin', 'cos', 'tan'),
+            ('RCL', 'ENG', '(', ')', 'S⇔D'),
+            ('7', '8', '9', 'DEL', 'AC'),
+            ('4', '5', '6', '×', '÷'),
+            ('1', '2', '3', '+', '-'),
+            ('0', '.', '×10^x', 'Ans', '=')
         ]
 
-        self.display_frame =self.create_display_frame()
+        # Define alternate labels to display above buttons
+        self.alternate_labels = {
+            '×10^x': 'π',
+            'sin': 'sin⁻¹',
+            'cos': 'cos⁻¹',
+            'tan': 'tan⁻¹',
+            'e^': 'e',
+        }
+
+
+        self.display_frame = self.create_display_frame()
         self.buttons_frame = self.create_buttons_frame()
         self.add_display_widgets()
         self.add_buttons_widgets()
-
-        
-
 
     def create_display_frame(self):
         frame = tk.Frame(self.root, height=100, bg=LIGHT_GREEN)
         frame.pack(expand=False, fill="both")
         return frame
+
     def create_buttons_frame(self):
         frame = tk.Frame(self.root, bg=BLACK)
         frame.pack(expand=True, fill="both")
@@ -65,52 +74,47 @@ class CalculatorApp:
         self.input_text.pack(expand=True, fill="both")
         self.input_text.focus_set()  # Ensures the cursor is visible
 
-
         self.result_text = tk.Text(self.display_frame, height=1, width=25, font=DISPLAY_FONT)
         self.result_text.pack(expand=True, fill="both")
-    
-
-    def show_hyp_menu(self):
-        """Display a pop-up menu for selecting a hyperbolic function."""
-        hyp_functions = ["sinh", "cosh", "tanh", "asinh", "acosh", "atanh"]
-
-        def insert_hyp_function(hyp_func):
-            self.input_text.insert(tk.END, f"{hyp_func}(")
-
-        # Create a new window for selection
-        hyp_window = tk.Toplevel(self.root)
-        hyp_window.title("Select Hyperbolic Function")
-        hyp_window.geometry("250x250")
-
-        # Add buttons for each hyperbolic function
-        for func in hyp_functions:
-            btn = tk.Button(hyp_window, text=func, font=BUTTONS_FONT, command=lambda f=func: [insert_hyp_function(f), hyp_window.destroy()])
-            btn.pack(fill="both", expand=True, padx=5, pady=5)
-
 
     def add_buttons_widgets(self):
-    # Define button sizes dynamically based on the layout
         button_width = 6
         button_height = 2
+
         for i, row in enumerate(self.buttons):
             for j, button_text in enumerate(row):
+                frame = tk.Frame(self.buttons_frame)
+                if button_text == '←':
+                    frame.grid(row=i, column=1, padx=2, pady=2, sticky="nsew")  # Below '↑'
+                elif button_text == '→':
+                    frame.grid(row=i, column=3, padx=2, pady=2, sticky="nsew")  # Next to '←'
+                elif button_text == 'e^':
+                    frame.grid(row=i, column=4, padx=2, pady=2, sticky="nsew")
+                else:
+                    frame.grid(row=i, column=j, padx=2, pady=2, sticky="nsew")
+
+                frame.grid_rowconfigure(0, weight=1)  # Label (1 part)
+                frame.grid_rowconfigure(1, weight=7)  # Button (2 parts)
+                frame.grid_columnconfigure(0, weight=1)
+
+                # Add an alternate label above if it exists
+                if button_text in self.alternate_labels:
+                    label = tk.Label(frame, text=self.alternate_labels[button_text], font=LABEL_FONT, fg="blue", bg=LIGHT_GREEN)
+                    label.grid(row=0, column=0, sticky="nsew")
+                else:
+                    label = tk.Label(frame, text="", font=("Arial", 10))
+                    label.grid(row=0, column=0, sticky="nsew")
+
 
                 # Create button
                 btn = tk.Button(
-                    self.buttons_frame, text=button_text, font=BUTTONS_FONT,
+                    frame, text=button_text, font=BUTTONS_FONT,
                     height=button_height, width=button_width,
                     command=lambda b=button_text: self.on_button_click(b)
                 )
+                
+                btn.grid(row=1, column=0, sticky="nsew")
 
-                if button_text == '←':
-                    btn.grid(row=i, column=1, padx=2, pady=2, sticky="nsew")  # Below '↑'
-                elif button_text == '→':
-                    btn.grid(row=i, column=3, padx=2, pady=2, sticky="nsew")  # Next to '←'
-                elif button_text == 'e^':
-                    btn.grid(row=i, column=4, padx=2, pady=2, sticky="nsew")
-                else:
-                    btn.grid(row=i, column=j, padx=2, pady=2, sticky="nsew")
-            
         # Make rows and columns expand to fill space
         for i in range(len(self.buttons)):
             self.buttons_frame.rowconfigure(i, weight=1)
@@ -177,7 +181,16 @@ class CalculatorApp:
                 self.input_text.mark_set(tk.INSERT, "insert -1 chars") 
             elif value == "(-)":
                 self.input_text.insert(tk.INSERT, "-")
-
+            elif value == "×10^x":
+                if self.shift_active:
+                    self.input_text.insert(tk.INSERT, "π")
+                else:
+                    self.input_text.insert(tk.INSERT, "×10^")
+            elif value == "e^":
+                if self.shift_active:
+                    self.input_text.insert(tk.INSERT, "e")
+                else:
+                    self.input_text.insert(tk.INSERT, "e^")
 
             # Not implemented buttons
             elif value in ["∫dx", "RCL", "ENG", "S⇔D", "MODE", "ON", "calc"]:
@@ -218,10 +231,10 @@ class CalculatorApp:
     def calculate_result(self):
         
         input_text = self.get_input_text()
-        postfix = self.infix_to_postfix(input_text)
+        postfix = self.postifix.infix_to_postfix(input_text)
 
         try:
-            result = self.evaluate_postfix(postfix)
+            result = self.postifix.evaluate_postfix(postfix)
 
             self.history.append(self.input_text.get("1.0", tk.END))
             self.history_result.append(result)
@@ -267,139 +280,3 @@ class CalculatorApp:
 
 
         return input_text
-
-    def infix_to_postfix(self, expression):
-        precedence = {
-            'lon': 3, # log with base n
-            'log': 3,
-            'ln': 3,
-            'sin': 3,
-            'cos': 3,
-            'tan': 3,
-            'asin': 3,
-            'acos': 3,
-            'atan': 3,
-            'sinh': 3,
-            'cosh': 3,
-            'tanh': 3,
-            'asinh': 3,
-            'acosh': 3,
-            'atanh': 3,
-            '^': 3,
-            '*': 2,
-            '/': 2,
-            '+': 1,
-            '-': 1,
-            '(': 0,
-            ')': 0
-        }
-        stack = []
-        postfix = []
-        
-
-        tokens = re.findall(r"[\d.]+|[-\d.]+|[A-Za-z]+|\S", expression) # Tokenize the expression
-        
-        print(tokens)
-        for token in tokens:
-            if token.replace("-", "", 1).replace(".", "", 1).isnumeric():
-                postfix.append(token)
-            elif  token in ['π', 'e']:  # numerical constants
-                postfix.append(self.mapping_dict[token])
-                print(self.mapping_dict[token])
-            elif token in precedence:
-                if token == '(':
-                    stack.append(token)
-                elif token == ')':
-                    while stack and stack[-1] != '(':
-                        postfix.append(stack.pop())
-                    stack.pop()
-                else:
-                    while stack and precedence[stack[-1]] >= precedence[token]:
-                        print(precedence[stack[-1]], precedence[token])
-                        postfix.append(stack.pop())
-                    stack.append(token)
-            else:
-                postfix.append(token)
-        while stack:
-            postfix.append(stack.pop())
-        print(postfix)
-        return postfix
-
-    def evaluate_postfix(self, postfix):
-        stack = []
-        for token in postfix:
-            if token.replace("-", "", 1).replace(".", "", 1).isnumeric():
-                stack.append(float(token))
-            elif token == 'e':
-                stack.append('e')
-            elif token in ['sin', 'cos', 'tan', 'log', 'ln', 'lon', 'sinh', 'cosh', 'tanh', 'asin', 'acos', 'atan', 'asinh', 'acosh', 'atanh']:
-                arg = stack.pop()
-                if token == 'sin':
-                    sin_series = SinSeries()
-                    stack.append(sin_series.calculate(math.radians(arg)))
-                elif token == 'cos':
-                    cos_series = CosSeries()
-                    stack.append(cos_series.calculate(math.radians(arg)))
-                elif token == 'tan':
-                    tan_series = TanSeries()
-                    stack.append(tan_series.calculate(math.radians(arg)))
-                
-                elif token == 'sinh':
-                    sinh_series = SinhSeries()
-                    stack.append(sinh_series.calculate(arg))
-                elif token == 'cosh':
-                    cosh_series = CoshSeries()
-                    stack.append(cosh_series.calculate(arg))
-                elif token == 'tanh':
-                    tanh_series = TanhSeries()
-                    stack.append(tanh_series.calculate(arg))
-                elif token == 'asin':
-                    stack.append(math.asin(arg))
-                elif token == 'acos':
-                    stack.append(math.acos(arg))
-                elif token == 'atan':
-                    stack.append(math.atan(arg))
-                elif token == 'asinh':
-                    stack.append(math.asinh(arg))
-                elif token == 'acosh':
-                    stack.append(math.acosh(arg))
-                elif token == 'atanh':
-                    stack.append(math.atanh(arg))
-
-                elif token == 'ln':
-                    ln_series = LnSeries()
-                    stack.append(ln_series.calculate(arg))
-                
-                elif token == 'log':
-                    log_series = LognSeries()
-                    stack.append(log_series.calculate(arg, 10))
-                elif token == 'lon':
-                    print(self.base_log)
-                    logn_series = LognSeries()
-                    stack.append(logn_series.calculate(arg, float(self.base_log)))
-
-            
-            else:
-                b = stack.pop()
-                a = stack.pop()
-                if token == '+':
-                    stack.append(a + b)
-                elif token == '-':
-                    stack.append(a - b)
-                elif token == '*':
-                    stack.append(a * b)
-                elif token == '/':
-                    stack.append(a / b)
-                elif token == '^':
-                    if a == math.e:
-                        myex = ExpSeries()
-                        stack.append(myex.calculate(x=b))
-                    else:
-                        stack.append(a ** b)
-        return stack[0]
-
-        
-if __name__ == "__main__":
-    root = tk.Tk()
-    app = CalculatorApp(root)
-    root.mainloop()
